@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Eletroquímico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F2EB;--bg2:#EDE9DF;--bg3:#E4DFD2;
+  --ink:#1A1611;--ink2:#4A4538;--ink3:#8A8070;
+  --teal:#1B6B5A;--teal-l:#D4EDE7;--teal-m:#6BB8A8;
+  --red:#8B2020;--red-l:#F5E0E0;
+  --amber:#A06010;--amber-l:#F5EAD0;
+  --border:#C8C0B0;--border2:#D8D2C5;
+  --mono:'IBM Plex Mono',monospace;
+  --serif:'Fraunces',serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:var(--mono);display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:0}
+.app-header{width:100%;max-width:960px;padding:20px 20px 0;display:flex;align-items:baseline;gap:12px}
+.app-title{font-family:var(--serif);font-size:22px;font-weight:900;color:var(--ink);letter-spacing:-.02em}
+.app-sub{font-size:10px;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase}
+.layout{width:100%;max-width:960px;padding:16px 20px 30px;display:grid;grid-template-rows:auto auto 1fr auto;gap:14px}
+.serie-section{}
+.sec-label{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.serie-wrap{display:flex;align-items:stretch;border:1.5px solid var(--border);border-radius:4px;overflow:hidden;background:white}
+.serie-el{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;border-right:1px solid var(--border2);cursor:pointer;transition:all .18s;position:relative;user-select:none}
+.serie-el:last-child{border-right:none}
+.serie-el:hover{background:var(--bg2)}
+.serie-el.selected-metal{background:var(--teal-l);border-color:var(--teal)}
+.serie-el.selected-ion{background:var(--red-l);border-color:var(--red)}
+.serie-el.selected-metal .el-sym{color:var(--teal)}
+.serie-el.selected-ion .el-sym{color:var(--red)}
+.el-sym{font-family:var(--serif);font-size:20px;font-weight:900;color:var(--ink);transition:color .18s}
+.el-ion{font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:1px}
+.el-rank{font-size:8px;margin-top:4px;font-family:var(--mono)}
+.serie-arrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+.sa-line{flex:1;height:1.5px;background:linear-gradient(to right,var(--teal),var(--red))}
+.sa-txt{font-size:9px;font-family:var(--mono)}
+.sel-badge{position:absolute;top:4px;right:4px;font-size:7px;font-weight:600;padding:1px 5px;border-radius:10px;letter-spacing:.06em}
+.sb-metal{background:var(--teal);color:white}
+.sb-ion{background:var(--red);color:white}
+.middle-grid{display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start}
+.beaker-panel{background:white;border:1.5px solid var(--border);border-radius:4px;overflow:hidden}
+.beaker-top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border2);background:var(--bg2)}
+.beaker-rxn-label{font-family:var(--serif);font-size:14px;font-weight:600;color:var(--ink)}
+.beaker-status{font-size:9px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.06em}
+.status-yes{background:var(--teal);color:white}
+.status-no{background:var(--red);color:white}
+.status-choose{background:var(--bg3);color:var(--ink3);border:1px solid var(--border)}
+.time-section{padding:10px 14px;border-bottom:1px solid var(--border2);background:var(--bg)}
+.time-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.time-label{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.time-pct{font-family:var(--serif);font-size:14px;font-weight:600;color:var(--ink)}
+.time-controls{display:flex;align-items:center;gap:8px}
+.play-btn{width:28px;height:28px;border-radius:3px;border:1.5px solid var(--border);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink2);transition:all .15s;flex-shrink:0}
+.play-btn:hover{background:var(--ink);color:white}
+.play-btn.playing{background:var(--ink);color:white}
+.time-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;border:1px solid var(--border2);cursor:pointer;position:relative}
+.time-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--teal),var(--teal-m));transition:width .05s linear;pointer-events:none}
+.time-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:white;border:2px solid var(--ink);cursor:grab;transition:left .05s linear}
+.beaker-canvas{padding:14px;display:flex;justify-content:center}
+.beaker-canvas svg{display:block}
+.info-panel{display:flex;flex-direction:column;gap:10px}
+.info-card{background:white;border:1.5px solid var(--border);border-radius:4px;overflow:hidden}
+.info-card-head{padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--border2);font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.info-card-body{padding:10px 12px}
+.eq-global{font-family:var(--serif);font-size:13px;font-weight:600;color:var(--ink);line-height:1.5;margin-bottom:8px}
+.eq-result{display:inline-flex;align-items:center;gap:6px;font-size:9px;padding:3px 9px;border-radius:20px;font-weight:600;letter-spacing:.06em}
+.eq-yes{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
+.eq-no{background:var(--red-l);color:var(--red)}
+.eq-pending{background:var(--bg3);color:var(--ink3);border:1px solid var(--border)}
+.semi-row{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border2)}
+.semi-row:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.semi-type{font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.semi-eq{font-size:11px;color:var(--ink);line-height:1.5;margin-bottom:3px}
+.semi-agent{font-size:9px;padding:2px 7px;border-radius:3px;display:inline-block}
+.semi-ox{color:var(--red);background:var(--red-l)}
+.semi-red2{color:var(--teal);background:var(--teal-l)}
+.elem-list{display:flex;flex-direction:column;gap:6px}
+.elem-item{display:flex;align-items:center;gap:8px}
+.elem-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.elem-info{}
+.elem-name{font-size:11px;color:var(--ink);font-weight:500}
+.elem-role{font-size:9px;color:var(--ink3)}
+.bottom-section{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bot-card{background:white;border:1.5px solid var(--border);border-radius:4px;overflow:hidden}
+.bot-head{padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--border2);font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.bot-body{padding:10px 12px;font-size:11px;color:var(--ink2);line-height:1.7}
+.instructions{text-align:center;padding:30px 20px;color:var(--ink3);font-size:11px;line-height:2}
+.inst-big{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--ink);display:block;margin-bottom:6px}
+.hint{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.hint-chip{font-size:9px;padding:3px 8px;border-radius:3px;background:var(--bg3);border:1px solid var(--border);color:var(--ink3)}
+.hint-chip span{color:var(--teal);font-weight:600}
+.hint-chip.ion-chip span{color:var(--red)}
+.reset-btn{font-size:10px;padding:5px 12px;border-radius:3px;border:1.5px solid var(--border);background:var(--bg2);color:var(--ink2);cursor:pointer;font-family:var(--mono);transition:all .15s;margin-left:8px}
+.reset-btn:hover{background:var(--ink);color:white;border-color:var(--ink)}
+
+/* accordion */
+.info-card-head.collapsible{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;transition:background .15s}
+.info-card-head.collapsible:hover{background:var(--bg3)}
+.collapse-arrow{font-size:9px;transition:transform .22s;display:inline-block;color:var(--ink3)}
+.info-card-body.collapsed{display:none}
+.info-card-head.collapsible.open .collapse-arrow{transform:rotate(180deg)}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <span class="app-title">Simulador Eletroquímico</span>
+  <span class="app-sub">Série de atividade dos metais</span>
+</div>
+
+<div class="layout">
+  <div class="serie-section">
+    <div class="sec-label">Série eletroquímica — clica para escolher metal (placa) e ião (solução)</div>
+    <div class="serie-wrap" id="serie-wrap"></div>
+    <div class="serie-arrow">
+      <span class="sa-txt" style="color:var(--teal)">← melhor redutor</span>
+      <div class="sa-line"></div>
+      <span class="sa-txt" style="color:var(--red)">pior redutor →</span>
+    </div>
+  </div>
+
+  <div class="middle-grid">
+    <div class="beaker-panel">
+      <div class="beaker-top">
+        <span class="beaker-rxn-label" id="beaker-rxn-label">Escolhe dois elementos</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="beaker-status status-choose" id="beaker-status">—</span>
+          <button class="reset-btn" id="reset-btn">↺ reset</button>
+        </div>
+      </div>
+      <div class="time-section">
+        <div class="time-header">
+          <span class="time-label">Tempo de reação</span>
+          <span class="time-pct" id="time-pct">0%</span>
+        </div>
+        <div class="time-controls">
+          <button class="play-btn" id="play-btn" title="Play/Pause">▶</button>
+          <div class="time-track" id="time-track">
+            <div class="time-fill" id="time-fill" style="width:0%"></div>
+            <div class="time-thumb" id="time-thumb" style="left:0%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="beaker-canvas" id="beaker-canvas"></div>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-card">
+        <div class="info-card-head collapsible open" id="head-global" onclick="toggleCard('panel-global','head-global')">
+          Reação global <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="info-card-body" id="panel-global">
+          <div class="instructions">
+            <span class="inst-big">Como usar</span>
+            1º clica num metal (placa)<br>
+            2º clica num ião (solução)
+            <div class="hint">
+              <span class="hint-chip"><span>Verde</span> = metal (placa)</span>
+              <span class="hint-chip ion-chip"><span>Vermelho</span> = ião (solução)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-head collapsible open" id="head-semi" onclick="toggleCard('panel-semi','head-semi')">
+          Semirreações <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="info-card-body" id="panel-semi"><span style="font-size:10px;color:var(--ink3)">—</span></div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-head">Elementos</div>
+        <div class="info-card-body" id="panel-elements"><span style="font-size:10px;color:var(--ink3)">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-section" id="bottom-section">
+    <div class="bot-card">
+      <div class="bot-head">O que está a acontecer</div>
+      <div class="bot-body" id="bot-desc">Seleciona dois elementos para ver a explicação da reação.</div>
+    </div>
+    <div class="bot-card">
+      <div class="bot-head">Observações visuais</div>
+      <div class="bot-body" id="bot-visual">As observações visuais aparecerão aqui conforme o tempo de reação avança.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const METALS = [
+  {sym:'Ca',ion:'Ca²⁺',charge:2,rank:0,color:'#C8BFA8',ionColor:'#E8D870',solColor:'rgba(232,216,112,0.18)',solColorFull:'rgba(180,160,60,0.35)',name:'Cálcio',ionName:'Ca²⁺',depositColor:'#A89870',depositName:'Ca(s)',desc:'O cálcio é o metal mais reativo desta série. Cede eletrões com enorme facilidade.',rankLabel:'muito redutor'},
+  {sym:'Zn',ion:'Zn²⁺',charge:2,rank:1,color:'#B8B87A',ionColor:'#5DCAA5',solColor:'rgba(93,202,165,0.15)',solColorFull:'rgba(45,160,120,0.30)',name:'Zinco',ionName:'Zn²⁺',depositColor:'#909070',depositName:'Zn(s)',desc:'O zinco é um bom redutor. Cede eletrões com facilidade a iões menos reativos.',rankLabel:'redutor'},
+  {sym:'Pb',ion:'Pb²⁺',charge:2,rank:2,color:'#909090',ionColor:'#7090B0',solColor:'rgba(112,144,176,0.15)',solColorFull:'rgba(80,110,150,0.28)',name:'Chumbo',ionName:'Pb²⁺',depositColor:'#707070',depositName:'Pb(s)',desc:'O chumbo tem reatividade moderada. Pode ser reduzido por metais mais ativos.',rankLabel:'redutor moderado'},
+  {sym:'Cu',ion:'Cu²⁺',charge:2,rank:3,color:'#C87941',ionColor:'#4B9EAD',solColor:'rgba(75,158,173,0.25)',solColorFull:'rgba(20,100,120,0.40)',name:'Cobre',ionName:'Cu²⁺',depositColor:'#B06030',depositName:'Cu(s)',desc:'O cobre é pouco reativo. Os seus iões Cu²⁺ são facilmente reduzidos por metais mais ativos.',rankLabel:'pouco redutor'},
+  {sym:'Ag',ion:'Ag⁺',charge:1,rank:4,color:'#D8D4D0',ionColor:'#A090D0',solColor:'rgba(160,144,208,0.15)',solColorFull:'rgba(120,100,180,0.20)',name:'Prata',ionName:'Ag⁺',depositColor:'#C0BCB8',depositName:'Ag(s)',desc:'A prata é o metal menos reativo desta série. Dificilmente perde eletrões.',rankLabel:'muito pouco redutor'}
+];
+
+let metalIdx=null,ionIdx=null,progress=0,playing=false,animId=null,lastTime=null,dragging=false;
+
+function toggleCard(bodyId, headId){
+  const body = document.getElementById(bodyId);
+  const head = document.getElementById(headId);
+  const isOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  head.classList.toggle('open', !isOpen);
+}
+
+function renderSerie(){
+  const wrap=document.getElementById('serie-wrap');
+  wrap.innerHTML=METALS.map((m,i)=>{
+    let cls='serie-el';
+    let badge='';
+    if(metalIdx===i){cls+=' selected-metal';badge=`<span class="sel-badge sb-metal">PLACA</span>`;}
+    if(ionIdx===i){cls+=' selected-ion';badge=`<span class="sel-badge sb-ion">IÃO</span>`;}
+    const rankColors=['#1B6B5A','#3B8A5A','#8A8020','#9A4020','#8B2020'];
+    return `<div class="${cls}" onclick="selectElement(${i})">
+      ${badge}
+      <div class="el-sym">${m.sym}</div>
+      <div class="el-ion">${m.ion}/${m.sym}</div>
+      <div class="el-rank" style="color:${rankColors[i]}">${m.rankLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectElement(i){
+  if(metalIdx===null){metalIdx=i;}
+  else if(ionIdx===null){
+    if(i===metalIdx){metalIdx=null;renderSerie();renderAll();return;}
+    ionIdx=i;progress=0;playing=false;updatePlayBtn();
+  } else {
+    metalIdx=i;ionIdx=null;progress=0;playing=false;updatePlayBtn();
+  }
+  renderSerie();renderAll();
+}
+
+function getReaction(){
+  if(metalIdx===null||ionIdx===null) return null;
+  return{metal:METALS[metalIdx],ion:METALS[ionIdx],happens:METALS[metalIdx].rank<METALS[ionIdx].rank};
+}
+
+function drawBeaker(t){
+  const W=340,H=230;
+  const rxn=getReaction();
+  if(!rxn){
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:220px" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="40" width="220" height="150" fill="#F8F6F0" rx="2"/>
+      <path d="M60 40 L60 190 Q60 196 67 196 L273 196 Q280 196 280 190 L280 40" fill="none" stroke="#C0B8A8" stroke-width="2"/>
+      <line x1="52" y1="40" x2="288" y2="40" stroke="#D0C8B8" stroke-width="1.5"/>
+      <text x="170" y="118" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#B0A898">seleciona elementos acima</text>
+    </svg>`;
+  }
+  const{metal,ion,happens}=rxn;
+  const lx=60,ly=50,lw=220,lh=140;
+  const parseRgba=(s)=>{const m=s.match(/[\d.]+/g);return m.map(Number)};
+  const sc0=parseRgba(ion.solColor);
+  const sc1=parseRgba(happens?metal.solColorFull:ion.solColor);
+  const blendSol=happens?t:0;
+  const sr=sc0[0]+(sc1[0]-sc0[0])*blendSol;
+  const sg=sc0[1]+(sc1[1]-sc0[1])*blendSol;
+  const sb=sc0[2]+(sc1[2]-sc0[2])*blendSol;
+  const sa=sc0[3]+(sc1[3]-sc0[3])*blendSol;
+  const solFill=`rgba(${Math.round(sr)},${Math.round(sg)},${Math.round(sb)},${sa.toFixed(2)})`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:220px" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="liq-clip"><rect x="${lx}" y="${ly}" width="${lw}" height="${lh}"/></clipPath>
+  </defs>`;
+  svg+=`<rect x="${lx}" y="${ly}" width="${lw}" height="${lh}" fill="${solFill}"/>`;
+  const plateW=happens?Math.max(5,20*(1-t*0.85)):20;
+  const plateDark=happens?Math.min(t*0.6,0.6):0;
+  const px=lx+18,py=ly,ph=lh;
+  function darken(hex,amt){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgb(${Math.round(r*(1-amt))},${Math.round(g*(1-amt))},${Math.round(b*(1-amt))})`;}
+  svg+=`<rect x="${px}" y="${py}" width="${plateW}" height="${ph}" fill="${darken(metal.color,plateDark*0.5)}" clip-path="url(#liq-clip)"/>`;
+  svg+=`<line x1="${px}" y1="${py}" x2="${px}" y2="${py+ph}" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>`;
+  svg+=`<text x="${px+plateW/2}" y="${py-6}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="9" fill="#4A4538">${metal.sym}(s)</text>`;
+  if(happens&&t>0.05){
+    const dh=Math.max(0,(lh-10)*t);
+    const dw=Math.max(0,18*Math.min(t*2,1));
+    const dx2=lx+lw-36,dy2=ly+lh-dh;
+    svg+=`<rect x="${dx2}" y="${dy2}" width="${dw}" height="${dh}" fill="${ion.depositColor}" opacity="0.9" clip-path="url(#liq-clip)"/>`;
+    if(t>0.1){for(let i=0;i<6;i++){svg+=`<rect x="${dx2-3+i*1.5}" y="${dy2-3-i*4}" width="${4+i%3}" height="${3+i%2}" fill="${ion.depositColor}" opacity="${0.4+i*0.08}" rx="1" clip-path="url(#liq-clip)"/>`;}}
+    if(t>0.08){const coatW=Math.min(4,plateW*0.5);svg+=`<rect x="${px+plateW-coatW}" y="${py}" width="${coatW}" height="${ph}" fill="${ion.depositColor}" opacity="${Math.min(t*0.8,0.7)}" clip-path="url(#liq-clip)"/>`;}
+    svg+=`<text x="${dx2+dw/2}" y="${dy2-5}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="9" fill="#4A4538">${ion.sym}(s)</text>`;
+  }
+  const ionCount=happens?Math.round(8*(1-t*0.7)):8;
+  const ionPositions=[[lx+60,ly+25],[lx+100,ly+55],[lx+145,ly+20],[lx+170,ly+70],[lx+120,ly+95],[lx+80,ly+75],[lx+155,ly+105],[lx+130,ly+45]];
+  for(let i=0;i<ionCount;i++){
+    const[ix,iy]=ionPositions[i%ionPositions.length];
+    const jitter=Math.sin(i*2.3)*6;
+    const dur=2+i*0.35;
+    svg+=`<circle cx="${ix+jitter}" cy="${iy}" r="4" fill="${ion.ionColor}" opacity="0.75"><animateTransform attributeName="transform" type="translate" values="0,0;${3-i%7},${-4+i%5};0,0" dur="${dur}s" repeatCount="indefinite"/></circle>`;
+  }
+  if(happens&&t>0&&t<0.92){
+    const arrowY=ly+lh/2;
+    const ax1=px+plateW+4,ax2=lx+lw-40;
+    const opacity=Math.min(t*3,1)*(1-Math.max(0,(t-0.7)*3));
+    svg+=`<path d="M${ax1} ${arrowY} L${ax2} ${arrowY}" stroke="#1B6B5A" stroke-width="1.5" stroke-dasharray="5,4" opacity="${opacity*0.6}"><animate attributeName="stroke-dashoffset" values="0;-18" dur="0.7s" repeatCount="indefinite"/></path>
+    <polygon points="${ax2},${arrowY} ${ax2-7},${arrowY-4} ${ax2-7},${arrowY+4}" fill="#1B6B5A" opacity="${opacity*0.7}"/>`;
+    for(let i=0;i<3;i++){svg+=`<circle cx="${ax1+(ax2-ax1)*((t*2+i*0.33)%1)}" cy="${arrowY-8+i*4}" r="4" fill="#1B6B5A" opacity="${opacity*0.7}"><animate attributeName="cx" values="${ax1};${ax2}" dur="${1.2+i*0.2}s" begin="${i*0.4}s" repeatCount="indefinite"/></circle>`;}
+  }
+  if(!happens){svg+=`<g opacity="0.35"><line x1="${lx+lw/2-22}" y1="${ly+30}" x2="${lx+lw/2+22}" y2="${ly+90}" stroke="#8B2020" stroke-width="3" stroke-linecap="round"/><line x1="${lx+lw/2+22}" y1="${ly+30}" x2="${lx+lw/2-22}" y2="${ly+90}" stroke="#8B2020" stroke-width="3" stroke-linecap="round"/></g><text x="${lx+lw/2}" y="${ly+lh/2+4}" text-anchor="middle" font-family="'Fraunces',serif" font-size="13" font-weight="600" fill="#8B2020" opacity="0.7">Sem reação</text>`;}
+  svg+=`<path d="M${lx} ${ly-10} L${lx} ${ly+lh} Q${lx} ${ly+lh+7} ${lx+8} ${ly+lh+7} L${lx+lw-8} ${ly+lh+7} Q${lx+lw} ${ly+lh+7} ${lx+lw} ${ly+lh} L${lx+lw} ${ly-10}" fill="none" stroke="rgba(80,70,55,0.4)" stroke-width="2"/>`;
+  svg+=`<line x1="${lx-8}" y1="${ly-10}" x2="${lx+lw+8}" y2="${ly-10}" stroke="rgba(80,70,55,0.3)" stroke-width="1.5"/>`;
+  svg+=`<rect x="${lx}" y="${H-10}" width="${lw}" height="3" fill="#E4DFD2" rx="1.5"/>`;
+  svg+=`<rect x="${lx}" y="${H-10}" width="${lw*t}" height="3" fill="${happens?'#1B6B5A':'#8B2020'}" rx="1.5"/>`;
+  svg+=`<text x="${lx+lw/2+30}" y="${ly+12}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="8.5" fill="rgba(60,50,30,0.5)">${ion.ion}(aq)</text>`;
+  svg+=`</svg>`;
+  return svg;
+}
+
+function renderAll(){
+  const rxn=getReaction();
+  const globalCollapsed=document.getElementById('panel-global').classList.contains('collapsed');
+  const semiCollapsed=document.getElementById('panel-semi').classList.contains('collapsed');
+  function restoreCollapsed(){
+    if(globalCollapsed){document.getElementById('panel-global').classList.add('collapsed');document.getElementById('head-global').classList.remove('open');}
+    if(semiCollapsed){document.getElementById('panel-semi').classList.add('collapsed');document.getElementById('head-semi').classList.remove('open');}
+  }
+  updateTimePct();
+  document.getElementById('beaker-canvas').innerHTML=drawBeaker(progress);
+  if(!rxn){
+    document.getElementById('beaker-rxn-label').textContent=metalIdx!==null?'Escolhe o ião (solução)':'Escolhe dois elementos';
+    document.getElementById('beaker-status').textContent='—';
+    document.getElementById('beaker-status').className='beaker-status status-choose';
+    document.getElementById('panel-global').innerHTML=`<div class="instructions"><span class="inst-big">${metalIdx!==null?'Agora escolhe o ião':'Como usar'}</span>${metalIdx!==null?`Metal selecionado: <b>${METALS[metalIdx].sym}</b><br>Clica num ião (solução)`:'1º clica num metal (placa)<br>2º clica num ião (solução)'}<div class="hint"><span class="hint-chip"><span>Verde</span> = metal (placa)</span><span class="hint-chip ion-chip"><span>Vermelho</span> = ião (solução)</span></div></div>`;
+    document.getElementById('panel-semi').innerHTML='<span style="font-size:10px;color:var(--ink3)">—</span>';
+    document.getElementById('panel-elements').innerHTML='<span style="font-size:10px;color:var(--ink3)">—</span>';
+    document.getElementById('bot-desc').textContent='Seleciona dois elementos para ver a explicação da reação.';
+    document.getElementById('bot-visual').textContent='As observações visuais aparecerão aqui conforme o tempo de reação avança.';
+    restoreCollapsed();return;
+  }
+  const{metal,ion,happens}=rxn;
+  const mSym=metal.sym,iSym=ion.sym,mIon=metal.ion,iIon=ion.ion,mCh=metal.charge,iCh=ion.charge;
+  const gcd=(a,b)=>b?gcd(b,a%b):a;
+  const lcm=(a,b)=>a*b/gcd(a,b);
+  const l=lcm(mCh,iCh);
+  const mCoef=l/mCh,iCoef=l/iCh;
+  const mCoefStr=mCoef>1?mCoef:'',iCoefStr=iCoef>1?iCoef:'';
+  const eq=happens?`${mCoefStr}${mSym}(s) + ${iCoefStr}${iIon}(aq) → ${mCoefStr}${mIon}(aq) + ${iCoefStr}${iSym}(s)`:`${mCoefStr}${mSym}(s) + ${iCoefStr}${iIon}(aq) → sem reação`;
+  document.getElementById('beaker-rxn-label').textContent=`${mSym} + ${iIon}`;
+  const st=document.getElementById('beaker-status');
+  st.textContent=happens?'✓ OCORRE':'✗ NÃO OCORRE';
+  st.className='beaker-status '+(happens?'status-yes':'status-no');
+  document.getElementById('panel-global').innerHTML=`<div class="eq-global">${eq}</div><span class="eq-result ${happens?'eq-yes':'eq-no'}">${happens?'✓ reação espontânea':'✗ não espontânea'}</span>`;
+  if(happens){
+    document.getElementById('panel-semi').innerHTML=`<div class="semi-row"><div class="semi-type" style="color:var(--red)">Oxidação (perde e⁻)</div><div class="semi-eq">${mCoefStr}${mSym} → ${mCoefStr}${mIon} + ${mCh*mCoef}e⁻</div><span class="semi-agent semi-ox">Agente redutor: ${mSym}</span></div><div class="semi-row"><div class="semi-type" style="color:var(--teal)">Redução (ganha e⁻)</div><div class="semi-eq">${iCoefStr}${iIon} + ${iCh*iCoef}e⁻ → ${iCoefStr}${iSym}</div><span class="semi-agent semi-red2">Agente oxidante: ${iIon}</span></div>`;
+  } else {
+    document.getElementById('panel-semi').innerHTML=`<div class="semi-row"><div class="semi-type" style="color:var(--ink3)">Oxidação — impossível</div><div class="semi-eq" style="color:var(--ink3)">${mSym} → ${mIon} + ${mCh}e⁻ ✗</div><span class="semi-agent" style="background:var(--bg3);color:var(--ink3)">${mSym} não tem poder redutor suficiente</span></div>`;
+  }
+  const elems=happens?[
+    {dot:metal.color,name:`${mSym}(s)`,role:`Metal — agente redutor`},
+    {dot:ion.ionColor,name:`${iIon}(aq)`,role:`Ião — agente oxidante`},
+    {dot:'#5DCAA5',name:`${mIon}(aq)`,role:`Produto — entra em solução`},
+    {dot:ion.depositColor,name:`${iSym}(s)`,role:`Produto — deposita-se como metal`},
+  ]:[
+    {dot:metal.color,name:`${mSym}(s)`,role:`Metal na placa (sem alteração)`},
+    {dot:ion.ionColor,name:`${iIon}(aq)`,role:`Ião em solução (sem alteração)`},
+  ];
+  document.getElementById('panel-elements').innerHTML=`<div class="elem-list">${elems.map(e=>`<div class="elem-item"><div class="elem-dot" style="background:${e.dot}"></div><div class="elem-info"><div class="elem-name">${e.name}</div><div class="elem-role">${e.role}</div></div></div>`).join('')}</div>`;
+  if(happens){
+    document.getElementById('bot-desc').innerHTML=`O <b>${metal.name}</b> (${mSym}) é melhor redutor que o <b>${ion.name}</b> (${iSym}). Ao ser colocado na solução de ${iIon}, o ${mSym} cede eletrões aos iões ${iIon}. ${metal.desc} Os iões ${iIon} ganham esses eletrões e reduzem-se a ${iSym} metálico.`;
+    const pct=Math.round(progress*100);
+    let visObs='Sem reação visível ainda.';
+    if(progress>0.05) visObs=`A placa de ${mSym} começa a escurecer ligeiramente na superfície.`;
+    if(progress>0.2) visObs=`A placa de ${mSym} fica mais escura e rugosa. Uma camada fosca de ${iSym} começa a formar-se.`;
+    if(progress>0.45) visObs=`Camada de ${iSym} metálico claramente visível. A placa de ${mSym} está a ser consumida.`;
+    if(progress>0.7) visObs=`Depósito espesso de ${iSym} formado. A placa de ${mSym} está muito mais fina. A solução mudou de cor.`;
+    if(progress>0.92) visObs=`Reação quase completa. O ${mSym} quase todo consumido. Depósito sólido de ${iSym} bem visível.`;
+    document.getElementById('bot-visual').innerHTML=`<b>${pct}% de progresso:</b> ${visObs}`;
+  } else {
+    document.getElementById('bot-desc').innerHTML=`O <b>${metal.name}</b> (${mSym}) é <i>pior</i> redutor que o <b>${ion.name}</b> (${iSym}). O ${mSym} não tem poder redutor suficiente para ceder eletrões aos iões ${iIon}. ${ion.desc}`;
+    document.getElementById('bot-visual').textContent=`A placa de ${mSym} e a solução de ${iIon} ficam sem qualquer alteração visível. Não ocorre deposição nem dissolução.`;
+  }
+  restoreCollapsed();
+}
+
+function updateTimePct(){
+  const pct=Math.round(progress*100);
+  document.getElementById('time-pct').textContent=pct+'%';
+  document.getElementById('time-fill').style.width=pct+'%';
+  document.getElementById('time-thumb').style.left=pct+'%';
+}
+function updatePlayBtn(){
+  const btn=document.getElementById('play-btn');
+  btn.textContent=playing?'⏸':'▶';
+  btn.classList.toggle('playing',playing);
+}
+document.getElementById('play-btn').onclick=()=>{
+  if(metalIdx===null||ionIdx===null) return;
+  if(progress>=1) progress=0;
+  playing=!playing;
+  updatePlayBtn();
+  if(playing) startAnim();
+};
+function startAnim(){
+  if(animId) cancelAnimationFrame(animId);
+  lastTime=null;
+  function tick(now){
+    if(!playing){animId=null;return;}
+    if(!lastTime) lastTime=now;
+    const dt=(now-lastTime)/1000;
+    lastTime=now;
+    progress=Math.min(1,progress+dt*0.12);
+    updateTimePct();renderAll();
+    if(progress>=1){playing=false;updatePlayBtn();animId=null;return;}
+    animId=requestAnimationFrame(tick);
+  }
+  animId=requestAnimationFrame(tick);
+}
+const track=document.getElementById('time-track');
+function setProgressFromEvent(e){
+  const rect=track.getBoundingClientRect();
+  const x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  progress=Math.max(0,Math.min(1,x/rect.width));
+  updateTimePct();renderAll();
+}
+track.addEventListener('mousedown',e=>{if(metalIdx===null||ionIdx===null) return;playing=false;updatePlayBtn();dragging=true;setProgressFromEvent(e);});
+window.addEventListener('mousemove',e=>{if(dragging) setProgressFromEvent(e);});
+window.addEventListener('mouseup',()=>{dragging=false;});
+track.addEventListener('touchstart',e=>{if(metalIdx===null||ionIdx===null) return;playing=false;updatePlayBtn();dragging=true;setProgressFromEvent(e);},{passive:true});
+window.addEventListener('touchmove',e=>{if(dragging) setProgressFromEvent(e);},{passive:true});
+window.addEventListener('touchend',()=>{dragging=false;});
+document.getElementById('reset-btn').onclick=()=>{
+  metalIdx=null;ionIdx=null;progress=0;playing=false;updatePlayBtn();
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  renderSerie();renderAll();
+};
+renderSerie();renderAll();
+</script>
+</body>
+</html>
